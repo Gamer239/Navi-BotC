@@ -64,6 +64,38 @@ __interrupt void IsrCntPulseTACC1 (void)
   }
 }
 
+uint8_t MotorController (uint8_t motorSelect, uint8_t motorSpeed)
+//------------------------------------------------------------------------
+// Func:  Initialize the ports for I/O on TA1 Capture
+// Args:  uint8_t motorSelect (0 = Motor 1, 1 = Motor 2)
+//        uint8_t motorSpeed (1 = Full Reverse, 64 = Stop, 127 = Full Forward)
+// Retn:  0 Successful Exit
+//        1 Motor Select Failure (Something other than 0 or 1 sent in)
+//------------------------------------------------------------------------
+{
+    if((motorSelect == 0) || (motorSelect == 1))
+    {
+      if(motorSelect == 0)
+      {
+        while ( !(IFG2 & UCA0TXIFG)) {};    // Confirm that Tx Buff is empty
+			  UCA0TXBUF = motorSpeed;             // Set motor speed to inputted speed
+			  
+			  return 0;
+      }
+      else
+      {
+        while ( !(IFG2 & UCA0TXIFG)) {};    // Confirm that Tx Buff is empty
+			  UCA0TXBUF = (motorSpeed & ~0x7F) | (0x80);      // Add 8th bit to
+			                                                  // inputted motor speed
+			  return 0;
+      }
+    }
+    else
+    {
+      return 1;
+    }
+}
+
 void InitPorts (void)
 //------------------------------------------------------------------------
 // Func:  Initialize the ports for I/O on TA1 Capture
