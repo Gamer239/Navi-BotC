@@ -15,6 +15,10 @@ volatile uint32_t i;
 volatile uint16_t cycles;
 volatile uint8_t edge;
 
+// STATE MACHINE VARIBLES //
+volatile uint8_t CurrentState;
+volatile uint8_t TurnCounter;
+
 #pragma vector=TIMERA1_VECTOR
 __interrupt void IsrCntPulseTACC1 (void) 
 //--------------------------------------------------------------------------
@@ -64,30 +68,62 @@ __interrupt void IsrCntPulseTACC1 (void)
   }
 }
 
-uint8_t MotorController (uint8_t motorSelect, uint8_t motorSpeed)
+void HallwayLogic(uint8_t StateMachine)
 //------------------------------------------------------------------------
-// Func:  Initialize the ports for I/O on TA1 Capture
-// Args:  uint8_t motorSelect (0 = Motor 1, 1 = Motor 2)
-//        uint8_t motorSpeed (1 = Full Reverse, 64 = Stop, 127 = Full Forward)
+// Func:  Run the state machine for the robot
+// Args:  uint8_t StateMachine 
+//                - 0 (NOP STATE): NOP Mode
+//                - 1 (STRAIGHT MODE): This is the default mode of operation
+//                - 2 (TURN MODE): Enter turning mode
+//                - 3 (STOP MODE): Stop the robot
+// Retn:  None
+//------------------------------------------------------------------------
+{
+  uint8_t MotorOneReturn = 0;
+  uint8_t MotorTwoReturn = 0;
+  CurrentState = 0;
+
+  if(StateMachine == 1)
+  {
+    while(!MotorController(0, 100)) {};
+    while(!MotorController(1, 100)) {};
+  }
+  else if(StateMachine == 2)
+  {
+    TurnCounter++;
+    
+    while(!MotorController(0, 100)) {};
+    while(!MotorController(1, 80)) {};
+  }
+  else if(StateMachine == 3)
+  {
+    while(!MotorController(0, 0)) {};
+  }
+}
+
+uint8_t MotorController (uint8_t MotorSelect, uint8_t MotorSpeed)
+//------------------------------------------------------------------------
+// Func:  Easy Motor Controller
+// Args:  uint8_t MotorSelect (0 = Motor 1, 1 = Motor 2)
+//        uint8_t MotorSpeed (1 = Full Reverse, 64 = Stop, 127 = Full Forward)
 // Retn:  0 Successful Exit
 //        1 Motor Select Failure (Something other than 0 or 1 sent in)
 //------------------------------------------------------------------------
 {
-    if((motorSelect == 0) || (motorSelect == 1))
+    if((MotorSelect == 0) || (MotorSelect == 1))
     {
-      if(motorSelect == 0)
+      if(MotorSelect == 0)
       {
         while ( !(IFG2 & UCA0TXIFG)) {};    // Confirm that Tx Buff is empty
-			  UCA0TXBUF = motorSpeed;             // Set motor speed to inputted speed
+	UCA0TXBUF = MotorSpeed;             // Set motor speed to inputted speed
 			  
-			  return 0;
+	return 0;
       }
       else
       {
         while ( !(IFG2 & UCA0TXIFG)) {};    // Confirm that Tx Buff is empty
-			  UCA0TXBUF = (motorSpeed & ~0x7F) | (0x80);      // Add 8th bit to
-			                                                  // inputted motor speed
-			  return 0;
+	UCA0TXBUF = MotorSpeed + 128;       // Inputted motor speed
+	return 0;
       }
     }
     else
@@ -149,11 +185,14 @@ void main(void)
    
   InitPorts();                               //  Configure I/O Pins
   SetupBasicFunc();
+  CurrentState = 0;
 
   while(1)
   {
     StartPinger(0);
   }
+
+  HallwayLogic(1);
+
   _BIS_SR(LPM1_bits + GIE);                  // Enter LPM w/ IRQs enab
 }
-
