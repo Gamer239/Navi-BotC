@@ -2,8 +2,8 @@
 #include "stdint.h"
 
 #define CLK 1200000
-#define MAX_TICKS 2500        // Blink length (loop passes)
-#define MAX_RANGE 100
+#define MAX_TICKS 5000        // Blink length (loop passes)
+#define MAX_RANGE 300
 
 volatile uint16_t pulse_count[3];      //Global Pulse Count
 volatile float dist[3];             //Global Frequency
@@ -151,19 +151,29 @@ void HallwayLogic(uint8_t StateMachine)
 
   if(StateMachine == 1)
   {
-    while(!MotorController(0, 100)) {};
-    while(!MotorController(1, 100)) {};
+    MotorController(0, 32);
+    MotorController(1, 32);
+    P1OUT |= 0x01;                      // Start of TX => toggle LEDs
+    P1OUT &= ~0x02;                      // Start of TX => toggle LEDs
   }
   else if(StateMachine == 2)
   {
     TurnCounter++;
     
-    while(!MotorController(0, 100)) {};
-    while(!MotorController(1, 80)) {};
+    MotorController(0, 100);
+    MotorController(1, 80);
+    P1OUT |= 0x02;                      // Start of TX => toggle LEDs
+    P1OUT &= ~0x01;                      // Start of TX => toggle LEDs
   }
   else if(StateMachine == 3)
   {
-    while(!MotorController(0, 0)) {};
+    MotorController(0, 64);
+    MotorController(1, 64);
+    P1OUT |= 0x03;                      // Start of TX => toggle LEDs
+  }
+  else
+  {
+    P1OUT &= ~0x03;                      // Start of TX => toggle LEDs
   }
 }
 
@@ -176,7 +186,7 @@ void InitPorts (void)
 // Retn:  None
 //------------------------------------------------------------------------
 {
-  P1DIR |= 0x01;                      // Config P1.0 as Output (LED)
+  P1DIR |= 0x03;                      // Config P1.0 as Output (LED)
   P2DIR &= ~0x0C;                     // P2.3 % 2.2 = Input
   P2SEL |= 0x0C;                      // P2.3 & 2.2 = TA1 & TA0 = TA compare OUT1
   P2DIR |= 0x13;
@@ -297,11 +307,24 @@ void main(void)
   CurrentState = 0;
   P1OUT &= ~0x01;
   uint8_t pinger_sel = 0;
+  uint8_t j = 0;
+  
+  for (j = 0; j < 4; j++)
+  {
+    StartPinger(j);
+  }
   
   while(1)
   {
     StartPinger(pinger_sel);
-    //HallwayLogic(1);
+    if (pinger[2] < 15)
+    {
+      HallwayLogic(3);
+    }
+    else
+    {
+      HallwayLogic(1);
+    }
     pinger_sel++;
     pinger_sel = pinger_sel % 4;
   }
