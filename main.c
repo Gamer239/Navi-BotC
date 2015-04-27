@@ -1,11 +1,9 @@
 #include "msp430x22x4.h"
 #include "stdint.h"
-//#include <stdio.h>
 
 #define CLK 1200000
-#define MAX_TICKS 100000        // Blink length (loop passes)
-#define TIMER_A_CTL P2OUT
-#define TIMER_B_CTL P4OUT
+#define MAX_TICKS 10000        // Blink length (loop passes)
+#define MAX_RANGE 100
 
 volatile uint16_t pulse_count[3];      //Global Pulse Count
 volatile float dist[3];             //Global Frequency
@@ -194,11 +192,15 @@ void SetupBasicFunc (void)
                                              // Capture | Sync Cap | Enab IRQ
   TACCTL1 = CM0 | CM1 | CCIS0 | CAP | SCS | CCIE;  // Ris Edge | Falling Edge | inp = CCI1B | 
                                              // Capture | Sync Cap | Enab IRQ
+  TBCTL   = TASSEL_2 | ID_0 | MC_2;          // SMCLK | Div by 1 | Contin Mode
   TBCCTL0 = CM0 | CM1 | CCIS0 | CAP | SCS | CCIE;  // Ris Edge | Falling Edge | inp = CCI1B | 
                                              // Capture | Sync Cap | Enab IRQ
 
   pulse_count[0] = 0;                           // Init input pulse counter
   dist[0] = 0;                                  //Init distuency
+  pinger[0] = 0;
+  pinger[1] = 0;
+  pinger[2] = 0;
   fallingEdge[0] = 0;
   risingEdge[0] = 0;
   i=0;
@@ -211,7 +213,21 @@ void CalculateDist( uint8_t ping_num )
   dist[ping_num] = (float)cycles[ping_num] / (float)CLK;
   dist[ping_num] = dist[ping_num] * 1000000;
   dist[ping_num] = dist[ping_num] / 148.;
-  pinger[ping_num] = dist[ping_num];
+  
+  float dif = pinger[ping_num] - dist[ping_num];
+  if (dif < 0)
+  {
+    dif = dif * -1;
+  }
+  
+  if (dif > 10 && dif < MAX_RANGE && pinger[ping_num] != 0 )
+  {
+    pinger[ping_num] = pinger[ping_num];
+  }
+  else
+  {
+    pinger[ping_num] = dist[ping_num];
+  }
 }
 
 void StartPinger( uint8_t ping_num )
