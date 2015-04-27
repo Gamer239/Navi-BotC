@@ -13,6 +13,7 @@ volatile uint32_t i;
 volatile uint16_t cycles[3];
 volatile uint8_t edge[3];
 volatile float pinger[3];
+volatile float history[9];
 
 // STATE MACHINE VARIBLES //
 volatile uint8_t CurrentState;
@@ -160,8 +161,8 @@ void HallwayLogic(uint8_t StateMachine)
   {
     TurnCounter++;
     
-    MotorController(0, 100);
-    MotorController(1, 80);
+    MotorController(0, 40);
+    MotorController(1, 16);
     P1OUT |= 0x02;                      // Start of TX => toggle LEDs
     P1OUT &= ~0x01;                      // Start of TX => toggle LEDs
   }
@@ -228,9 +229,49 @@ void SetupBasicFunc (void)
   pinger[2] = 0;
   fallingEdge[0] = 0;
   risingEdge[0] = 0;
+  for(i=0; i < 9; i++)
+  {
+    history[i] = 0;
+  }
   i=0;
   edge[0] = 0;
+  
+  
+  
   _BIS_SR(GIE);                          // IRQs enab
+}
+
+float VoteForPinger( uint8_t ping_num )
+{
+  float diff1 = history[ping_num*3] - history[ping_num*3+1];
+  float diff2 = history[ping_num*3+1] - history[ping_num*3+2];
+  
+  if (diff1 < 0)
+  {
+    diff1 = diff1 * -1;
+  }
+  
+  if (diff2 < 0)
+  {
+    diff2 = diff2 * -1;
+  }
+  
+  if ( diff1 < 10 && diff2 < 10 )
+  {
+    return history[ping_num*3];
+  }
+  else if ( diff1 < 10 && diff2 > 10 )
+  {
+    return history[ping_num*3];
+  }
+  else if ( diff1 > 10 && diff2 < 10)
+  {
+    return history[ping_num*3+2];
+  }
+  else
+  {
+    return pinger[ping_num];
+  }
 }
 
 void CalculateDist( uint8_t ping_num )
@@ -245,14 +286,21 @@ void CalculateDist( uint8_t ping_num )
     dif = dif * -1;
   }
   
-  if (dif > 10 && dif < MAX_RANGE && pinger[ping_num] != 0 )
+  //update the history
+  history[ping_num*3] = history[ping_num*3+1];
+  history[ping_num*3+1] = history[ping_num*3+2];
+  history[ping_num*3+2] = dist[ping_num];
+  
+  pinger[ping_num] = VoteForPinger(ping_num);
+  
+  /*if (dif > 10 && dif < MAX_RANGE && pinger[ping_num] != 0 )
   {
     pinger[ping_num] = pinger[ping_num];
   }
   else
   {
     pinger[ping_num] = dist[ping_num];
-  }
+  }*/
 }
 
 void StartPinger( uint8_t ping_num )
@@ -317,13 +365,37 @@ void main(void)
   while(1)
   {
     StartPinger(pinger_sel);
+    
+    
     if (pinger[2] < 15)
     {
+      //force stop if we're to close
       HallwayLogic(3);
+    }
+    //the hallway sensor is reading high
+    else if (pinger[0] > 250)
+    {
+      HallwayLogic(2);
     }
     else
     {
-      HallwayLogic(1);
+      //sweet spot
+      if (pinger[0] > 20 && pinger[0] < 40)
+      {
+        HallwayLogic(1);
+      }
+      //to far left
+      else if( pinger[0] < 20 )
+      {
+        MotorController(0, 36);
+        MotorController(1, 30);
+      }
+      //to far right
+      else if ( pinger[0] > 40 )
+      {
+        MotorController(0, 30);
+        MotorController(1, 36);
+      }
     }
     pinger_sel++;
     pinger_sel = pinger_sel % 4;
