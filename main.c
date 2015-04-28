@@ -373,28 +373,30 @@ void main(void)
       HallwayLogic(3);
     }
     //the hallway sensor is reading high
-    else if (pinger[0] > 250)
+    else if (pinger[0] > 250  && pinger[2] > 15)
     {
       HallwayLogic(2);
     }
     else
     {
       //sweet spot
-      if (pinger[0] > 20 && pinger[0] < 40)
+      if (pinger[0] > 20 && pinger[0] < 40  && pinger[2] > 15)
       {
         HallwayLogic(1);
       }
       //to far left
-      else if( pinger[0] < 20 )
+      else if( pinger[0] < 20 && pinger[2] > 15 )
       {
         MotorController(0, 36);
         MotorController(1, 30);
+        P1OUT &= ~0x03;                      // Start of TX => toggle LEDs
       }
       //to far right
-      else if ( pinger[0] > 40 )
+      else if ( pinger[0] > 40  && pinger[2] > 15 )
       {
         MotorController(0, 30);
         MotorController(1, 36);
+        P1OUT &= ~0x03;                      // Start of TX => toggle LEDs
       }
     }
     pinger_sel++;
