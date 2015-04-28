@@ -15,6 +15,8 @@ volatile uint8_t edge[3];
 volatile float pinger[3];
 volatile float history[9];
 volatile uint8_t waiting;
+volatile uint32_t left_motor;
+volatile uint32_t right_motor;
 
 // STATE MACHINE VARIBLES //
 volatile uint8_t CurrentState;
@@ -125,6 +127,7 @@ uint8_t MotorController (uint8_t MotorSelect, uint8_t MotorSpeed)
       {
         while ( !(IFG2 & UCA0TXIFG)) {};    // Confirm that Tx Buff is empty
 	UCA0TXBUF = MotorSpeed;             // Set motor speed to inputted speed
+        right_motor = MotorSpeed;
 			  
 	return 0;
       }
@@ -132,6 +135,7 @@ uint8_t MotorController (uint8_t MotorSelect, uint8_t MotorSpeed)
       {
         while ( !(IFG2 & UCA0TXIFG)) {};    // Confirm that Tx Buff is empty
 	UCA0TXBUF = MotorSpeed + 128;       // Inputted motor speed
+        left_motor = MotorSpeed;
 	return 0;
       }
     }
@@ -276,8 +280,8 @@ void HallwayLogic(uint8_t StateMachine)
 
   if(StateMachine == 1)
   {
-    MotorController(0, 32);
-    MotorController(1, 36);
+    MotorController(0, 40);
+    MotorController(1, 44);
     P1OUT |= 0x01;                      // Start of TX => toggle LEDs
     P1OUT &= ~0x02;                      // Start of TX => toggle LEDs
   }
@@ -286,28 +290,42 @@ void HallwayLogic(uint8_t StateMachine)
     TurnCounter++;
     uint8_t pinger_sel = 0;
     
-    if (pinger[1] > 250 && ( history[3] < 1 || history[4] < 1 || history[5] < 1 ) )
-    {
-      //return;
-    }
-    
-    MotorController(0, 5);
-    MotorController(1, 40);
+    MotorController(0, 25);
+    MotorController(1, 58);
     P1OUT |= 0x02;                      // Start of TX => toggle LEDs
     P1OUT &= ~0x01;                      // Start of TX => toggle LEDs
-    for (i = MAX_TICKS*4.25; i != 0; i--) {} ;   // Empty S-Ware delay loop
+    for (i = MAX_TICKS*6.5; i != 0; i--) {} ;   // Empty S-Ware delay loop
     
     //MotorController(0, 32);
     //MotorController(1, 32);
     
-    //for (i = MAX_TICKS*4; i != 0; i--) {
-    //} ;   // Empty S-Ware delay loop;
+    for (i = MAX_TICKS*3; i != 0; i--) {
+    } ;   // Empty S-Ware delay loop;
   }
   else if(StateMachine == 3)
   {
     MotorController(0, 64);
     MotorController(1, 64);
     P1OUT |= 0x03;                      // Start of TX => toggle LEDs
+  }
+  //dodge ALL the fucking obstacles
+  else if (StateMachine == 4)
+  {
+    //head right
+    //MotorController(0, 40);
+    //MotorController(1, 5);
+    for (i = MAX_TICKS*1; i != 0; i--) {} ;   // Empty S-Ware delay loop
+    
+    //go straight
+   // MotorController(0, 30);
+    //MotorController(1, 30);
+    for (i = MAX_TICKS*1; i != 0; i--) {} ;   // Empty S-Ware delay loop
+    
+    //head left
+    //MotorController(0, 5);
+    //MotorController(1, 40);
+    for (i = MAX_TICKS*1; i != 0; i--) {} ;   // Empty S-Ware delay loop
+    
   }
   else
   {
@@ -407,8 +425,8 @@ void main(void)
   {
     //P2OUT ^= 0x03;
     StartPinger(0);
-    //j++;
-    //j=j%3;
+    j++;
+    j=j%3;
   }
   
   //while(1){};
@@ -417,47 +435,56 @@ void main(void)
   {
     StartPinger(pinger_sel);
     
-    if (pinger[2] < 2655)
+    if (pinger[2] < 1770 && pinger[2] != 0)
     {
       //force stop if we're to close
       HallwayLogic(3);
+      j=0;
+      //while(j<5000){j++;};
     }
-    //the hallway sensor is reading high
     else if (pinger[1] > 10620)
     {
       HallwayLogic(2);
     }
+    //dodge, dodge, dodge
+    else if (pinger[2] < 5310 && pinger[2] != 0)
+    {
+      HallwayLogic(4);
+    }
+    //the hallway sensor is reading high
+    
     else
     {
       //sweet spot
-      if (pinger[1] > 3540 && pinger[1] < 8850)
+      if (pinger[1] > 1770 && pinger[1] < 5310)
       {
         HallwayLogic(1);
       }
-      //to far left
-      else if( pinger[1] < 3540 )
+      //to close to left
+      else if( pinger[1] < 1770 )
       {
-        MotorController(0, 37);
+        MotorController(0, 52);  //right motor
         MotorController(1, 30);
         P1OUT &= ~0x03;                      // Start of TX => toggle LEDs
       }
       //to far right
-      else if ( pinger[1] > 7080 )
+      else if ( pinger[1] > 5310 )
       {
         MotorController(0, 30);
-        MotorController(1, 36);
+        MotorController(1, 48);
         P1OUT &= ~0x03;                      // Start of TX => toggle LEDs
       }
+      //to close to right wall
       else if ( pinger[0] < 10620 )
       {
-        MotorController(0, 28);
-        MotorController(1, 38);
+        MotorController(0, 35);
+        MotorController(1, 46);
         P1OUT &= ~0x03;                      // Start of TX => toggle LEDs
       }
       else if (pinger[0] < 1770)
       {
-        MotorController(0, 40);
-        MotorController(1, 20);
+        MotorController(0, 50);
+        MotorController(1, 35);
         P1OUT &= ~0x03;                      // Start of TX => toggle LED
       }
     }
