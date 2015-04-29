@@ -310,15 +310,15 @@ void HallwayLogic(uint8_t StateMachine)
     
     for (i = MAX_TICKS*4; i != 0; i--) {} ;   // Empty S-Ware delay loop
     
-    MotorController(0, 80);
-    MotorController(1, 80);
+    MotorController(0, 90);
+    MotorController(1, 90);
         
     do 
     {
       StartPinger(0);
       for (i = MAX_TICKS; i != 0; i--) {} ;   // Empty S-Ware delay loop
     }
-    while(pinger[0] < 6500);
+    while(pinger[0] < 3800);
     
     stopCondition++;
     
@@ -329,50 +329,19 @@ void HallwayLogic(uint8_t StateMachine)
   else if (StateMachine == 4)
   {
     //head right
-      MotorController(0, 47);
+      MotorController(0, 70);
       MotorController(1, 5);
     
     do 
     {
       StartPinger(0);
       for (i = MAX_TICKS; i != 0; i--) {} ;   // Empty S-Ware delay loop
-    }
-    while(pinger[0] < 5200);
-    
-    /*MotorController(0, 40);
-    MotorController(1, 40);
-    
-    do 
-    {
+      
       StartPinger(1);
       for (i = MAX_TICKS; i != 0; i--) {} ;   // Empty S-Ware delay loop
     }
-    while(pinger[1] < 585);*/
+    while(pinger[0] < 4000 && pinger[1] < 2000);
     
-    
-    /*MotorController(0, 30);
-    MotorController(1, 40);
-    
-    do 
-    {
-      StartPinger(1);
-      for (i = MAX_TICKS*8; i != 0; i--) {} ;   // Empty S-Ware delay loop
-    }
-    while(pinger[1] < 1770);*/
-    
-    
-    
-    //for (i = MAX_TICKS*7; i != 0; i--) {} ;   // Empty S-Ware delay loop
-    
-    //go straight
-    //MotorController(0, 30);
-    //MotorController(1, 30);
-    //for (i = MAX_TICKS*7; i != 0; i--) {} ;   // Empty S-Ware delay loop
-    
-    //head left
-    //MotorController(0, 5);
-    //MotorController(1, 40);
-    //for (i = MAX_TICKS*7; i != 0; i--) {} ;   // Empty S-Ware delay loop
     dodgeCondition++;
   }
   else
@@ -489,12 +458,12 @@ void CorrectionLogic(void)
   //to far right
   else if ( pinger[1] > 2700 )
   {
-	if(pinger[1] > 5000)
+	if(pinger[1] > 4500)
 	{
 	  MotorController(0, 20);
 	  MotorController(1, 60);  
 	}
-	else if(pinger[1] > 4200)
+	else if(pinger[1] > 4000)
 	{
 	  MotorController(0, 25);  //right motor
 	  MotorController(1, 55);
@@ -560,7 +529,7 @@ void main(void)
     }
     */
     //dodge, dodge, dodge
-    else if (pinger[0] < 5200 && pinger[0] != 0)
+    else if (pinger[0] < 4000 && pinger[0] != 0)
     {
       HallwayLogic(4);
     }
